@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 /* ============================================================
    AUDIO ENGINE
@@ -48,14 +48,21 @@ const pick = a => a[Math.random()*a.length|0];
    ============================================================ */
 function MatrixRain({ fullscreen }) {
   const ref = useRef(null), anim = useRef(null);
+  const lastFrame = useRef(0);
   useEffect(() => {
     const c = ref.current; if (!c) return; const ctx = c.getContext('2d');
+    const isMobile = window.innerWidth <= 768;
+    const targetFPS = isMobile ? 15 : 30;
+    const frameInterval = 1000 / targetFPS;
     const resize = () => { c.width = innerWidth; c.height = innerHeight; };
     resize(); addEventListener('resize', resize);
     const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF'.split('');
-    const fs = 14, cols = Math.floor(c.width / fs);
+    const fs = isMobile ? 12 : 14, cols = Math.floor(c.width / fs);
     const drops = Array.from({length:cols}, () => Math.random()*c.height/fs|0);
-    const draw = () => {
+    const draw = (timestamp) => {
+      anim.current = requestAnimationFrame(draw);
+      if (timestamp - lastFrame.current < frameInterval) return;
+      lastFrame.current = timestamp;
       ctx.fillStyle = 'rgba(5,5,7,0.05)'; ctx.fillRect(0, 0, c.width, c.height);
       ctx.fillStyle = '#00ff41'; ctx.font = `${fs}px monospace`;
       for (let i = 0; i < drops.length; i++) {
@@ -63,9 +70,9 @@ function MatrixRain({ fullscreen }) {
         ctx.fillText(chars[Math.random()*chars.length|0], i*fs, drops[i]*fs);
         if (drops[i]*fs > c.height && Math.random() > 0.975) drops[i] = 0; drops[i]++;
       }
-      ctx.globalAlpha = 1; anim.current = requestAnimationFrame(draw);
+      ctx.globalAlpha = 1;
     };
-    draw();
+    anim.current = requestAnimationFrame(draw);
     return () => { removeEventListener('resize', resize); cancelAnimationFrame(anim.current); };
   }, [fullscreen]);
   return <canvas ref={ref} className={`matrix-canvas ${fullscreen ? 'fullscreen' : ''}`} />;
@@ -117,7 +124,7 @@ function BootScreen({ onComplete }) {
 /* ============================================================
    WINDOW COMPONENT
    ============================================================ */
-function Window({ id, title, icon, x, y, w, h, zIdx, focused, minimized, maximized, onClose, onMin, onMax, onfocus, children }) {
+const Window = React.memo(function Window({ id, title, icon, x, y, w, h, zIdx, focused, minimized, maximized, onClose, onMin, onMax, onfocus, children }) {
   const [pos, setPos] = useState({ x, y });
   const [size, setSize] = useState({ w, h });
   const dragging = useRef(false);
@@ -125,34 +132,48 @@ function Window({ id, title, icon, x, y, w, h, zIdx, focused, minimized, maximiz
   const offset = useRef({ x: 0, y: 0 });
   const resizeEdge = useRef('');
   const mounted = useRef(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const minW = isMobile ? 260 : 320;
+  const minH = isMobile ? 180 : 200;
   const clampPos = (nx, ny) => ({
     x: Math.max(0, Math.min(nx, window.innerWidth - 80)),
     y: Math.max(0, Math.min(ny, window.innerHeight - 60)),
   });
   const clampSize = (nw, nh) => ({
-    w: Math.max(320, Math.min(nw, window.innerWidth - 20)),
-    h: Math.max(200, Math.min(nh, window.innerHeight - 60)),
+    w: Math.max(minW, Math.min(nw, window.innerWidth - 20)),
+    h: Math.max(minH, Math.min(nh, window.innerHeight - 60)),
   });
   useEffect(() => { if (!mounted.current) { setPos(clampPos(x, y)); setSize({ w: Math.min(w, window.innerWidth - 20), h: Math.min(h, window.innerHeight - 60) }); mounted.current = true; } }, []);
   useEffect(() => { if (maximized) { setPos({ x: 0, y: 0 }); setSize({ w: window.innerWidth, h: window.innerHeight - 44 }); } else if (mounted.current) { setPos(clampPos(x, y)); setSize({ w: Math.min(w, window.innerWidth - 20), h: Math.min(h, window.innerHeight - 60) }); } }, [maximized]);
-  const onMouseDown = (e) => {
+  const onPointerDown = (e) => {
     if (e.target.closest('.window-dot') || e.target.closest('.window-resize')) return;
     e.stopPropagation(); onfocus();
     if (maximized) return;
-    dragging.current = true; offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-    const mv = e2 => { if (dragging.current) setPos(clampPos(e2.clientX - offset.current.x, e2.clientY - offset.current.y)); };
-    const up = () => { dragging.current = false; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragging.current = true; offset.current = { x: clientX - pos.x, y: clientY - pos.y };
+    const mv = (e2) => {
+      if (!dragging.current) return;
+      const cx = e2.touches ? e2.touches[0].clientX : e2.clientX;
+      const cy = e2.touches ? e2.touches[0].clientY : e2.clientY;
+      setPos(clampPos(cx - offset.current.x, cy - offset.current.y));
+    };
+    const up = () => { dragging.current = false; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); };
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
   };
   const onResizeDown = (e, edge) => {
     e.stopPropagation(); e.preventDefault(); onfocus();
     if (maximized) return;
     resizing.current = true; resizeEdge.current = edge;
-    const startX = e.clientX, startY = e.clientY;
+    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    const startY = e.touches ? e.touches[0].clientY : e.clientY;
     const startPos = { ...pos }, startSize = { ...size };
-    const mv = e2 => {
+    const mv = (e2) => {
       if (!resizing.current) return;
-      const dx = e2.clientX - startX, dy = e2.clientY - startY;
+      const cx = e2.touches ? e2.touches[0].clientX : e2.clientX;
+      const cy = e2.touches ? e2.touches[0].clientY : e2.clientY;
+      const dx = cx - startX, dy = cy - startY;
       let nx = startPos.x, ny = startPos.y, nw = startSize.w, nh = startSize.h;
       if (edge.includes('right')) nw = startSize.w + dx;
       if (edge.includes('bottom')) nh = startSize.h + dy;
@@ -163,15 +184,16 @@ function Window({ id, title, icon, x, y, w, h, zIdx, focused, minimized, maximiz
       if (edge.includes('top')) ny = startPos.y + (startSize.h - cs.h);
       setPos(clampPos(nx, ny)); setSize(cs);
     };
-    const up = () => { resizing.current = false; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+    const up = () => { resizing.current = false; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); };
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
   };
   const cls = ['window', focused && 'focused', minimized && 'minimized', maximized && 'maximized'].filter(Boolean).join(' ');
   const style = maximized ? { left: 0, top: 0, width: '100vw', height: 'calc(100vh - 44px)', zIndex: zIdx || 1 } : { left: pos.x, top: pos.y, width: size.w, height: size.h, zIndex: zIdx || 1 };
   const edges = ['right', 'bottom', 'left', 'top', 'bottom-right', 'bottom-left', 'top-right', 'top-left'];
   return (
     <div className={cls} style={style} onMouseDown={e => { if (!e.target.closest('.window-titlebar') && !e.target.closest('.window-resize')) onfocus(); }}>
-      <div className="window-titlebar" onMouseDown={onMouseDown}>
+      <div className="window-titlebar" onMouseDown={onPointerDown} onTouchStart={onPointerDown}>
         <div className="window-titlebar-left">
           <div className="window-dots">
             <div className="window-dot close" onClick={e => { e.stopPropagation(); onClose(); }} />
@@ -183,11 +205,11 @@ function Window({ id, title, icon, x, y, w, h, zIdx, focused, minimized, maximiz
       </div>
       <div className="window-body" onClick={() => onfocus()}>{children}</div>
       {!maximized && edges.map(edge => (
-        <div key={edge} className={`window-resize window-resize-${edge}`} onMouseDown={e => onResizeDown(e, edge)} />
+        <div key={edge} className={`window-resize window-resize-${edge}`} onMouseDown={e => onResizeDown(e, edge)} onTouchStart={e => onResizeDown(e, edge)} />
       ))}
     </div>
   );
-}
+});
 
 export { AudioEngine, audio, rIP, rHex, rPort, rMAC, ts, sleep, b64e, b64d, rot13, fakeHash, UUID, pad, pick, MatrixRain, BootScreen, Window };
 
@@ -348,7 +370,7 @@ function createFS() {
 /* ============================================================
    TERMINAL APP
    ============================================================ */
-function TerminalApp({ fs, setFs, soundOn, setSurveillanceActive }) {
+const TerminalApp = React.memo(function TerminalApp({ fs, setFs, soundOn, setSurveillanceActive }) {
   const [lines, setLines] = useState([
     { t: 'DarkSim OS v3.7.1 (GNU/Linux 6.8.0-darksim x86_64)', c: 'dim' },
     { t: 'Last login: ' + ts() + ' from 10.0.0.1', c: 'dim' },
@@ -1946,12 +1968,12 @@ function TerminalApp({ fs, setFs, soundOn, setSurveillanceActive }) {
       <div ref={endRef} />
     </div>
   );
-}
+});
 
 /* ============================================================
    BROWSER APP
    ============================================================ */
-function BrowserApp({ soundOn }) {
+const BrowserApp = React.memo(function BrowserApp({ soundOn }) {
   const [currentSite, setCurrentSite] = useState(0);
   const [history, setHistory] = useState([0]);
   const [histIdx, setHistIdx] = useState(0);
@@ -2070,12 +2092,12 @@ function BrowserApp({ soundOn }) {
       )}
     </div>
   );
-}
+});
 
 /* ============================================================
    FILE MANAGER APP
    ============================================================ */
-function FileManagerApp({ fs, setFs }) {
+const FileManagerApp = React.memo(function FileManagerApp({ fs, setFs }) {
   const [cwd, setCwd] = useState('/');
   const [selected, setSelected] = useState(null);
   const [viewFile, setViewFile] = useState(null);
@@ -2122,12 +2144,12 @@ function FileManagerApp({ fs, setFs }) {
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    NOTEPAD APP
    ============================================================ */
-function NotepadApp() {
+const NotepadApp = React.memo(function NotepadApp() {
   const [text, setText] = useState(`OPERATOR JOURNAL - TOP SECRET
 ================================
 
@@ -2198,12 +2220,28 @@ WARNING: THIS FILE MONITORS YOU.`);
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    SYSTEM MONITOR APP
    ============================================================ */
-function SystemMonitorApp() {
+const MiniGraph = React.memo(function MiniGraph({ data, color, max = 100, height = 40 }) {
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${height - (v / max) * height}`).join(' ');
+  return (
+    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{display:'block'}}>
+      <defs>
+        <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <polygon points={`0,${height} ${pts} 100,${height}`} fill={`url(#grad-${color.replace('#','')})`} />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+});
+
+const SystemMonitorApp = React.memo(function SystemMonitorApp() {
   const [tab, setTab] = useState('processes');
   const [ticks, setTicks] = useState(0);
   const [cpuHistory, setCpuHistory] = useState(Array(40).fill(0));
@@ -2268,21 +2306,6 @@ function SystemMonitorApp() {
     }, 2000);
     return () => clearInterval(iv);
   }, []);
-  const MiniGraph = ({ data, color, max = 100, height = 40 }) => {
-    const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${height - (v / max) * height}`).join(' ');
-    return (
-      <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{display:'block'}}>
-        <defs>
-          <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
-          </linearGradient>
-        </defs>
-        <polygon points={`0,${height} ${pts} 100,${height}`} fill={`url(#grad-${color.replace('#','')})`} />
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-      </svg>
-    );
-  };
   const filteredProcs = processes.filter(p => !processFilter || p.cmd.toLowerCase().includes(processFilter.toLowerCase()) || String(p.pid).includes(processFilter));
   return (
     <div className="monitor-container">
@@ -2413,12 +2436,12 @@ function SystemMonitorApp() {
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    CALCULATOR APP
    ============================================================ */
-function CalculatorApp() {
+const CalculatorApp = React.memo(function CalculatorApp() {
   const [display, setDisplay] = useState('0');
   const [prev, setPrev] = useState(null);
   const [op, setOp] = useState(null);
@@ -2442,12 +2465,12 @@ function CalculatorApp() {
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    SETTINGS APP
    ============================================================ */
-function SettingsApp({ theme, setTheme, soundOn, setSoundOn, matrixOn, setMatrixOn }) {
+const SettingsApp = React.memo(function SettingsApp({ theme, setTheme, soundOn, setSoundOn, matrixOn, setMatrixOn }) {
   const themes = [
     { id: 'green', label: 'Terminal Green', color: '#00ff41', desc: 'Classic hacker aesthetic' },
     { id: 'amber', label: 'Amber Glow', color: '#ffb000', desc: 'Vintage CRT warmth' },
@@ -2565,7 +2588,7 @@ function SettingsApp({ theme, setTheme, soundOn, setSoundOn, matrixOn, setMatrix
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    MAIN APP

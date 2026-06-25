@@ -2,8 +2,6 @@
    DARKSIM OS - Dark Hacking Desktop Environment
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
-
 :root {
   --primary: #ff2222;
   --primary-dim: #aa1111;
@@ -1639,29 +1637,176 @@ body {
 .victory { animation: victory-glow 1.5s ease-in-out infinite; }
 
 /* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+.window { will-change: transform; contain: layout style; }
+.window-titlebar { will-change: background; }
+.window-body { contain: layout style; }
+.term-output { contain: layout style; }
+.monitor-content { contain: layout style; }
+.browser-content { contain: layout style; }
+.fm-content { contain: layout style; }
+.matrix-canvas { will-change: opacity; contain: layout; }
+.boot-screen { contain: layout style; }
+.taskbar { will-change: transform; contain: layout style; }
+.start-menu { will-change: transform, opacity; contain: layout style; }
+.alert-overlay { contain: layout style; }
+.search-overlay { contain: layout style; }
+.context-menu { contain: layout style; }
+
+/* Touch-friendly sizing */
+@supports (pointer: coarse) {
+  .window-dot { width: 14px; height: 14px; }
+  .window-resize-right, .window-resize-left { width: 12px; }
+  .window-resize-bottom, .window-resize-top { height: 12px; }
+  .window-resize-bottom-right,
+  .window-resize-bottom-left,
+  .window-resize-top-right,
+  .window-resize-top-left { width: 20px; height: 20px; }
+  .term-input { font-size: 16px !important; }
+  .browser-url { font-size: 16px !important; padding: 8px 12px; }
+  .calc-btn { min-height: 48px; }
+  .fm-item { min-height: 64px; }
+  .start-menu-item { padding: 14px 18px; }
+  .settings-toggle { width: 52px; height: 28px; }
+  .settings-toggle-slider { width: 22px; height: 22px; }
+  .settings-toggle-slider.active { left: 26px; }
+  .browser-nav-btn { min-height: 40px; }
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
+@media (max-width: 1024px) {
+  .desktop-icons { top: 14px; left: 14px; gap: 5px; }
+  .desktop-icon { width: 70px; padding: 10px 8px 7px; }
+  .desktop-icon-img { width: 40px; height: 40px; font-size: 14px; }
+  .news-article-title { font-size: 14px; }
+  .settings-system-info { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 768px) {
   .desktop-icons { top: 10px; left: 10px; gap: 4px; }
   .desktop-icon { width: 64px; padding: 8px 6px 6px; }
   .desktop-icon-img { width: 36px; height: 36px; font-size: 13px; }
   .desktop-icon-label { font-size: 9px; }
-  .window { min-width: 280px; }
-  .start-menu { width: 240px; }
+  .window { min-width: 280px; border-radius: 8px; }
+  .window-titlebar { height: 32px; padding: 0 10px; }
+  .window-title { font-size: 10px; max-width: 200px; }
+  .window-dots { gap: 5px; }
+  .window-dot { width: 11px; height: 11px; }
+  .start-menu { width: 260px; max-height: calc(100vh - 54px); }
+  .start-menu-header { font-size: 10px; padding: 12px 14px; }
+  .start-menu-item { padding: 10px 14px; font-size: 11px; }
   .settings-options { grid-template-columns: 1fr; }
+  .settings-container { padding: 20px; }
+  .settings-group { padding: 16px; }
   .news-site { padding: 16px; }
+  .news-header-title { font-size: 18px; letter-spacing: 2px; }
+  .news-article { padding: 14px 16px; margin-bottom: 10px; }
+  .news-article-title { font-size: 14px; }
+  .news-article-excerpt { font-size: 11px; }
+  .term-output { padding: 10px 12px; font-size: 12px; }
+  .term-input-area { padding: 8px 12px; }
+  .term-prompt { font-size: 11px; }
+  .term-input { font-size: 12px; }
+  .boot-screen { padding: 20px; font-size: 11px; }
+  .boot-progress { bottom: 20px; left: 20px; right: 20px; }
+  .alert-box { padding: 20px; max-width: 320px; }
+  .alert-title { font-size: 13px; }
+  .alert-body { font-size: 11px; }
+  .search-box { width: 95vw; }
+  .search-input { font-size: 14px; padding: 14px 16px; }
+  .alt-tab-item { width: 80px; padding: 12px 6px; }
+  .alt-tab-icon { font-size: 16px; }
+  .alt-tab-title { font-size: 9px; }
+  .monitor-header { font-size: 9px; padding: 6px 10px; }
+  .monitor-row { padding: 5px 10px; font-size: 10px; }
+  .monitor-col { padding: 0 4px; }
+  .fm-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; padding: 12px; }
+  .fm-item { padding: 10px 6px 8px; }
+  .fm-item-icon { font-size: 16px; }
+  .fm-item-name { font-size: 9px; }
+  .fm-toolbar { padding: 6px 10px; gap: 8px; }
+  .fm-path { font-size: 10px; }
+  .calc-display { font-size: 28px; padding: 16px; min-height: 60px; }
+  .calc-btn { font-size: 16px; padding: 12px; }
+  .notepad-line-numbers { width: 36px; padding: 10px 6px; font-size: 10px; }
+  .notepad-editor { font-size: 11px; padding: 10px; }
+  .notepad-menu-item { padding: 5px 10px; font-size: 10px; }
+  .browser-nav { padding: 6px 8px; gap: 4px; }
+  .browser-nav-btn { min-width: 28px; height: 28px; font-size: 10px; padding: 0 8px; }
+  .browser-site-tab { padding: 6px 12px; font-size: 9px; }
+  .taskbar { height: 40px; }
+  .taskbar-start { padding: 0 12px; gap: 6px; }
+  .taskbar-start-icon { font-size: 16px; }
+  .taskbar-start-text { font-size: 10px; letter-spacing: 1px; }
+  .taskbar-app { padding: 0 10px; font-size: 10px; gap: 6px; }
+  .taskbar-tray { padding: 0 10px; gap: 8px; }
+  .tray-clock { font-size: 9px; }
+  .context-menu { min-width: 160px; }
+  .context-menu-item { padding: 10px 14px; font-size: 11px; }
 }
 
 @media (max-width: 480px) {
-  .window { min-width: 260px; }
+  .window { min-width: 0; width: calc(100vw - 16px) !important; border-radius: 6px; }
+  .window.maximized { border-radius: 0; }
+  .desktop-icons { grid-template-columns: repeat(3, 1fr); gap: 3px; top: 8px; left: 8px; }
+  .desktop-icon { width: 56px; padding: 6px 4px 5px; }
+  .desktop-icon-img { width: 32px; height: 32px; font-size: 11px; border-radius: 8px; }
+  .desktop-icon-label { font-size: 8px; line-height: 1.2; }
   .taskbar-app span:last-child { display: none; }
-  .settings-container { padding: 16px; }
-  .settings-group { padding: 14px; }
+  .taskbar-start-text { display: none; }
+  .settings-container { padding: 14px; }
+  .settings-group { padding: 12px; }
+  .settings-title { font-size: 16px; letter-spacing: 2px; }
+  .settings-label { font-size: 10px; letter-spacing: 1px; }
+  .news-header-title { font-size: 16px; letter-spacing: 1px; }
+  .news-header-sub { font-size: 10px; }
+  .news-article-title { font-size: 13px; }
+  .news-article-excerpt { font-size: 10px; }
+  .news-article-meta { font-size: 9px; }
+  .news-ticker-content { font-size: 10px; }
+  .term-output { font-size: 11px; line-height: 1.6; }
+  .term-prompt { font-size: 10px; }
+  .term-input { font-size: 14px !important; }
+  .boot-screen { padding: 14px; font-size: 10px; }
+  .start-menu { width: 100vw; max-width: 100vw; border-radius: 0; }
+  .start-menu-header { font-size: 10px; padding: 10px 14px; }
+  .start-menu-item { padding: 12px 14px; }
+  .monitor-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .monitor-tab { padding: 8px 12px; font-size: 9px; white-space: nowrap; flex-shrink: 0; }
+  .browser-nav { flex-wrap: wrap; }
+  .browser-url { min-width: 0; }
+  .calc-grid { gap: 2px; padding: 4px; }
+  .calc-btn { font-size: 14px; padding: 10px; min-height: 44px; }
+  .alert-box { padding: 16px; width: 92%; }
+  .fm-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 4px; padding: 8px; }
+  .fm-item { padding: 8px 4px 6px; }
+}
+
+@media (max-width: 360px) {
+  .desktop-icons { grid-template-columns: repeat(2, 1fr); }
+  .desktop-icon { width: 52px; }
+  .desktop-icon-img { width: 28px; height: 28px; font-size: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desktop, .glitch-text, .glitch-text-subtle, .glitch-text-extended,
-  .news-ticker-content, .tray-indicator { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .news-ticker-content { animation: none !important; }
+  .tray-indicator { animation: none !important; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .window-dot:hover { transform: none; opacity: 0.6; }
+  .desktop-icon:hover { transform: none; }
+  .desktop-icon:active { transform: scale(0.95); }
+  .news-article:hover { transform: none; }
+  .fm-item:hover { transform: none; }
 }
 
 /* ============================================
