@@ -4,7 +4,7 @@ A full-featured, browser-based hacking terminal simulator built with React. Feat
 
 **Perfect as a:** Portfolio piece, UI template, terminal simulator, or dark-themed React starter project.
 
-##live preview:  https://hacksimulator3.netlify.app
+## live preview:  https://hacksimulator3.netlify.app
 
 ## Quick Start
 
